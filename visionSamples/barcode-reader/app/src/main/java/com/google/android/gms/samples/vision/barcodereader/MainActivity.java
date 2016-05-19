@@ -27,6 +27,9 @@ import android.widget.TextView;
 import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.vision.barcode.Barcode;
 
+import com.pubnub.api.*;
+import org.json.*;
+
 /**
  * Main activity demonstrating how to pass extra parameters to an activity that
  * reads barcodes.
@@ -41,6 +44,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private static final int RC_BARCODE_CAPTURE = 9001;
     private static final String TAG = "BarcodeMain";
+    Pubnub pubnub = new Pubnub("pub-c-a3e49d86-46d8-400b-a36d-41a4d0619067",
+            "sub-c-e8d8bca2-1695-11e6-8bc8-0619f8945a4f");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +68,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
      */
     @Override
     public void onClick(View v) {
+
         if (v.getId() == R.id.read_barcode) {
             // launch barcode activity.
             Intent intent = new Intent(this, BarcodeCaptureActivity.class);
@@ -71,7 +77,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
             startActivityForResult(intent, RC_BARCODE_CAPTURE);
         }
-
     }
 
     /**
@@ -98,12 +103,21 @@ public class MainActivity extends Activity implements View.OnClickListener {
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Callback callback = new Callback() {
+            public void successCallback(String channel, Object response) {
+                System.out.println(response.toString());
+            }
+            public void errorCallback(String channel, PubnubError error) {
+                System.out.println(error.toString());
+            }
+        };
         if (requestCode == RC_BARCODE_CAPTURE) {
             if (resultCode == CommonStatusCodes.SUCCESS) {
                 if (data != null) {
                     Barcode barcode = data.getParcelableExtra(BarcodeCaptureActivity.BarcodeObject);
                     statusMessage.setText(R.string.barcode_success);
                     barcodeValue.setText(barcode.displayValue);
+                    pubnub.publish("event_feed_channel1", barcode.displayValue , callback);
                     Log.d(TAG, "Barcode read: " + barcode.displayValue);
                 } else {
                     statusMessage.setText(R.string.barcode_failure);
