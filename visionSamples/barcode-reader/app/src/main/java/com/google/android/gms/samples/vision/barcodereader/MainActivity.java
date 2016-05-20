@@ -28,6 +28,7 @@ import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.vision.barcode.Barcode;
 
 import com.pubnub.api.*;
+
 import org.json.*;
 
 /**
@@ -43,7 +44,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private TextView barcodeValue;
 
     private static final int RC_BARCODE_CAPTURE = 9001;
+    private static final int RC_LOGIN = 9002;
     private static final String TAG = "BarcodeMain";
+    private String email;
+
     Pubnub pubnub = new Pubnub("pub-c-a3e49d86-46d8-400b-a36d-41a4d0619067",
             "sub-c-e8d8bca2-1695-11e6-8bc8-0619f8945a4f");
 
@@ -52,13 +56,16 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        statusMessage = (TextView)findViewById(R.id.status_message);
-        barcodeValue = (TextView)findViewById(R.id.barcode_value);
+        statusMessage = (TextView) findViewById(R.id.status_message);
+        barcodeValue = (TextView) findViewById(R.id.barcode_value);
 
         autoFocus = (CompoundButton) findViewById(R.id.auto_focus);
         useFlash = (CompoundButton) findViewById(R.id.use_flash);
 
         findViewById(R.id.read_barcode).setOnClickListener(this);
+
+        Intent activityChangeIntent = new Intent(MainActivity.this, LoginActivity.class);
+        startActivityForResult(activityChangeIntent, RC_LOGIN);
     }
 
     /**
@@ -107,17 +114,25 @@ public class MainActivity extends Activity implements View.OnClickListener {
             public void successCallback(String channel, Object response) {
                 System.out.println(response.toString());
             }
+
             public void errorCallback(String channel, PubnubError error) {
                 System.out.println(error.toString());
             }
         };
+        if (requestCode == RC_LOGIN) {
+            if (resultCode == RESULT_OK) {
+                if (data != null) {
+                    email = data.getExtras().getString("email");
+                }
+            }
+        }
         if (requestCode == RC_BARCODE_CAPTURE) {
             if (resultCode == CommonStatusCodes.SUCCESS) {
                 if (data != null) {
                     Barcode barcode = data.getParcelableExtra(BarcodeCaptureActivity.BarcodeObject);
                     statusMessage.setText(R.string.barcode_success);
                     barcodeValue.setText(barcode.displayValue);
-                    pubnub.publish("event_feed_channel1", barcode.displayValue , callback);
+                    pubnub.publish(email, barcode.displayValue, callback);
                     Log.d(TAG, "Barcode read: " + barcode.displayValue);
                 } else {
                     statusMessage.setText(R.string.barcode_failure);
@@ -127,8 +142,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 statusMessage.setText(String.format(getString(R.string.barcode_error),
                         CommonStatusCodes.getStatusCodeString(resultCode)));
             }
-        }
-        else {
+        } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
     }
